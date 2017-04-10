@@ -1,4 +1,4 @@
-1、操作系统的sys_call_table地址未必和我的一样,使用 cat /boot/System.map-`uname -r` | grep sys_call_table 获取地址:
+1、操作系统的sys_call_table地址未必和我的一样,使用 cat /boot/System.map-`uname -r` | grep sys_call_table 获取地址:\n
 unsigned long *sys_call_table = (unsigned long*) 0xffffffff816005e0;
 2、编译启动test程序，test启动默认端口是13377
 gcc test.c -o test
