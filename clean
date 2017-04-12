@@ -1,0 +1,18 @@
+#!/bin/sh
+
+make clean
+
+pwd=$(pwd)/demo
+
+cd $pwd/hook/
+make clean
+
+cd $pwd/systemcall/
+make clean
+
+cd $pwd/hidden/process
+make clean
+
+cd $pwd/hidden/module
+make clean
+
