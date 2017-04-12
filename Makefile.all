@@ -1,0 +1,16 @@
+#!/bin/sh
+
+pwd=$(pwd)/demo
+
+cd $pwd/hook/
+make
+
+cd $pwd/systemcall/
+make
+
+cd $pwd/hidden/process
+make
+
+cd $pwd/hidden/module
+make
+
