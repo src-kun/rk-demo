@@ -1,0 +1,4 @@
+rmmod hiddenpro
+make clean
+make
+insmod hiddenpro.ko

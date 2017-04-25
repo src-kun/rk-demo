@@ -64,6 +64,9 @@ void hijack_start ( void *target, void *new )
     // mov rax, $addr; jmp rax
     memcpy(n_code, "\x48\xb8\x00\x00\x00\x00\x00\x00\x00\x00\xff\xe0", HIJACK_SIZE);
     *(unsigned long *)&n_code[2] = (unsigned long)new;
+		#if __DEBUG_HOOK__
+		printk("n_code 0x%0x\n 0x%0x\n", (unsigned int)n_code, (unsigned int)new);
+		#endif
     #else // ARM
     if ( (unsigned long)target % 4 == 0 )
     {
