@@ -1,0 +1,4 @@
+rmmod hiddensock
+make clean
+make
+insmod hiddensock.ko

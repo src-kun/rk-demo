@@ -19,3 +19,6 @@ make clean
 cd $pwd/hidden/module
 make clean
 
+cd $pwd/hidden/sock
+make clean
+

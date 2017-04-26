@@ -17,3 +17,6 @@ make
 cd $pwd/hidden/module
 make
 
+cd $pwd/hidden/sock
+make
+
