@@ -134,54 +134,12 @@ void hijack_stop ( void *target )
     list_for_each_entry ( sa, &hooked_syms, list )
         if ( target == sa->addr )
         {
-            #if defined(_CONFIG_X86_) || defined(_CONFIG_X86_64_)
             unsigned long o_cr0 = disable_wp();
             memcpy(target, sa->o_code, HIJACK_SIZE);
             restore_wp(o_cr0);
-            #else // ARM
-            memcpy(target, sa->o_code, HIJACK_SIZE);
-            cacheflush(target, HIJACK_SIZE);
-            #endif
 
             list_del(&sa->list);
             kfree(sa);
             break;
         }
 }
-
-char *strnstr ( const char *haystack, const char *needle, size_t n )
-{
-    char *s = strstr(haystack, needle);
-
-    if ( s == NULL )
-        return NULL;
-
-    if ( s - haystack + strlen(needle) <= n )
-        return s;
-    else
-        return NULL;
-}
-
-void *memmem ( const void *haystack, size_t haystack_size, const void *needle, size_t needle_size )
-{
-    char *p;
-
-    for ( p = (char *)haystack; p <= ((char *)haystack - needle_size + haystack_size); p++ )
-        if ( memcmp(p, needle, needle_size) == 0 )
-            return (void *)p;
-
-    return NULL;
-}
-
-void *memstr ( const void *haystack, const char *needle, size_t size )
-{
-    char *p;
-    size_t needle_size = strlen(needle);
-
-    for ( p = (char *)haystack; p <= ((char *)haystack - needle_size + size); p++ )
-        if ( memcmp(p, needle, needle_size) == 0 )
-            return (void *)p;
-
-    return NULL;
-}
-
