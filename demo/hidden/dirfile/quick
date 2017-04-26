@@ -1,0 +1,5 @@
+make clean
+rmmod hiddendirfile
+make clean
+make
+insmod hiddendirfile.ko

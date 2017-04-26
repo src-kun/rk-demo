@@ -22,3 +22,6 @@ make clean
 cd $pwd/hidden/sock
 make clean
 
+cd $pwd/hidden/dirfile
+make clean
+
