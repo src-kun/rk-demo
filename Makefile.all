@@ -2,7 +2,10 @@
 
 pwd=$(pwd)/demo
 
-cd $pwd/hook/
+cd $pwd/hook/int80
+make
+
+cd $pwd/hook/hijack
 make
 
 cd $pwd/systemcall/
