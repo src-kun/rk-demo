@@ -22,4 +22,3 @@ make
 
 cd $pwd/hidden/dirfile
 make
-

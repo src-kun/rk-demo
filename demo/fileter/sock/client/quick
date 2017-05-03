@@ -1,0 +1,4 @@
+rmmod client
+make clean
+make
+insmod client.ko

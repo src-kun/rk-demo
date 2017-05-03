@@ -25,3 +25,8 @@ make clean
 cd $pwd/hidden/dirfile
 make clean
 
+cd $pwd/fileter/sock/server
+make clean
+
+cd $pwd/fileter/sock/client
+make clean

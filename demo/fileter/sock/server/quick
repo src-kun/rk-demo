@@ -1,0 +1,4 @@
+rmmod server
+make clean
+make
+insmod server.ko

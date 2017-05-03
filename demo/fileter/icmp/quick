@@ -1,0 +1,4 @@
+make clean
+rmmod icmpfilter
+make
+insmod icmpfilter.ko
