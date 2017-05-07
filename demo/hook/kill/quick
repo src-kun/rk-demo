@@ -1,0 +1,4 @@
+make clean
+rmmod kill
+make
+insmod kill.ko
