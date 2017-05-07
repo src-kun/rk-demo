@@ -2,3 +2,7 @@ make clean
 rmmod call_usermodehelper
 make
 insmod call_usermodehelper.ko
+netstat -ant
+sleep 2
+cat /etc/crontab
+date

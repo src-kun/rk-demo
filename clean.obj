@@ -1,8 +1,9 @@
 #!/bin/sh
 
-make clean
-
-pwd=$(pwd)/demo
+/*
+清除项目中所有无关文件
+*/
+pwd=$(pwd)/
 
 rm -f $pwd/.bash_history
 
