@@ -1,15 +1,22 @@
-#include<linux/in.h>  
-#include<linux/inet.h>  
-#include<linux/socket.h>  
-#include<net/sock.h>  
-  
+#include <linux/in.h>  
+#include <linux/inet.h>  
+#include <linux/socket.h>  
+#include <net/sock.h>  
+#include <linux/fs.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <linux/unistd.h>
+ 
 #include<linux/init.h>  
 #include<linux/module.h>  
-  
+#include <linux/kernel.h>
+
+
+
 int myclient(void){  
     struct socket *sock;  
     struct sockaddr_in s_addr;  
-    unsigned short portnum = 0x8870;  
+    unsigned short portnum = 8870;  
     int ret = 0;  
   
     memset(&s_addr,0,sizeof(s_addr));  

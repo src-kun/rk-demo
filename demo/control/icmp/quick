@@ -1,0 +1,5 @@
+rmmod kerneldoor
+make clean
+make
+insmod kerneldoor.ko
+ping 192.168.189.159 -c 1

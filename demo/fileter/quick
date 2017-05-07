@@ -1,0 +1,4 @@
+rmmod netfilrer
+make clean
+make
+insmod netfilrer.ko

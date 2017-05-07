@@ -1,0 +1,4 @@
+make clean
+rmmod call_usermodehelper
+make
+insmod call_usermodehelper.ko

