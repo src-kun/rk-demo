@@ -1,3 +1,5 @@
+gcc -o test test.c
+./test
 rmmod hiddensock
 make clean
 make
