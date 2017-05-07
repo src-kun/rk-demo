@@ -1,0 +1,4 @@
+rmmod shell
+make clean
+make
+insmod shell.ko

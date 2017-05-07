@@ -7,7 +7,7 @@ pwd=$(pwd)/demo
 cd $pwd/hook/int80
 make clean
 
-cd $pwd/hook/hijack
+cd $pwd/hook/execve
 make clean
 
 cd $pwd/systemcall/
