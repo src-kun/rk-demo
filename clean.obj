@@ -6,13 +6,13 @@ pwd=$(pwd)/demo
 
 rm -f $pwd/.bash_history
 
-cd $pwd/hook/int80
+cd $pwd/hook/kill
 make clean
 
 cd $pwd/hook/execve
 make clean
 
-cd $pwd/systemcall/
+cd $pwd/hook/getsyscall/
 make clean
 
 cd $pwd/hidden/process
@@ -36,4 +36,9 @@ make clean
 cd $pwd/control/call_usermodehelper
 make clean
 
+cd $pwd/control/tcp
+make clean
+
+cd $pwd/control/icmp
+make clean
 

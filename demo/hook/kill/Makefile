@@ -1,4 +1,4 @@
-obj-m += int80_hook.o
+obj-m += kill.o
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
