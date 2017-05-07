@@ -1,4 +1,4 @@
-rmmod shell
+rmmod execve
 make clean
 make
-insmod shell.ko
+insmod execve.ko
