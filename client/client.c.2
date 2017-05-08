@@ -13,42 +13,40 @@
 #define QUEUE   20
 #define BUFFER_SIZE 1024
 
-char console[BUFFER_SIZE] = {0};
+char console[BUFFER_SIZE] = 0;
 
 int main()
 {
-    ///¶¨Òåsockfd
+    ///¿¿sockfd
     int server_sockfd = socket(AF_INET,SOCK_STREAM, 0);
 
-    ///¶¨Òåsockaddr_in
+    ///¿¿sockaddr_in
     struct sockaddr_in server_sockaddr;
     server_sockaddr.sin_family = AF_INET;
     server_sockaddr.sin_port = htons(MYPORT);
     server_sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    ///bind£¬³É¹¦·µ»Ø0£¬³ö´í·µ»Ø-1
+    ///bind¿¿¿¿¿0¿¿¿¿¿-1
     if(bind(server_sockfd,(struct sockaddr *)&server_sockaddr,sizeof(server_sockaddr))==-1)
     {
         perror("bind");
         exit(1);
     }
 
-    ///listen£¬³É¹¦·µ»Ø0£¬³ö´í·µ»Ø-1
+    ///listen¿¿¿¿¿0¿¿¿¿¿-1
     if(listen(server_sockfd,QUEUE) == -1)
     {
         perror("listen");
         exit(1);
     }
 
-    ///¿Í»§¶ËÌ×½Ó×Ö
-    char ret[BUFFER_SIZE];
-	char cmd[BUFFER_SIZE];
-	char tmp[BUFFER_SIZE];
+    ///¿¿¿¿¿¿
+    char buffer[BUFFER_SIZE];
 	
     struct sockaddr_in client_addr;
     socklen_t length = sizeof(client_addr);
 
-    ///³É¹¦·µ»Ø·Ç¸ºÃèÊö×Ö£¬³ö´í·µ»Ø-1
+    ///¿¿¿¿¿¿¿¿¿¿¿¿¿¿-1
     int conn = accept(server_sockfd, (struct sockaddr*)&client_addr, &length);
     if(conn<0)
     {
@@ -60,44 +58,37 @@ int main()
 	
     while(1)
     {
-		int len;
-		if(!strlen(console))
-		{
-			len = recv(conn, console, sizeof(console),0);
-		}
+        memset(console,0,sizeof(console));
+        int len = recv(conn, console, sizeof(console),0);
+        if(strcmp(buffer,"exit\n")==0)
+            break;
 		
-		printf("%s", console);
-		memset(cmd,0,sizeof(cmd));
-		/*µÈ´ýÓÃ»§ÊäÈëÃüÁî*/
-		while(fgets(cmd, sizeof(cmd), stdin) != NULL)
-		{
-			send(conn, cmd, sizeof(cmd), 0);
+		/*
+		¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿recv¿¿¿¿¿¿¿¿¿¿¿¿¿¿()¿¿¿
+		*/
 			
-			memset(ret,0,sizeof(ret));
-			recv(conn, ret, sizeof(ret),0);
+		 if(strcmp(console, buffer) == 0)
+		 {
+			memset(buffer,0,sizeof(buffer));
+			len = recv(conn, buffer, sizeof(buffer),0);
+			printf("%s", buffer);
+			memset(buffer,0,sizeof(buffer));
+			len = recv(conn, buffer, sizeof(buffer),0);
+			printf("%s", buffer);
+			
+		}else{
+			printf("%s", console);
+			//printf("%s", buffer);
+		}
+		printf("\nlen : %d\n", len);
+		memset(buffer,0,sizeof(buffer));
+		while(fgets(buffer, sizeof(buffer), stdin) != NULL)
+		{
+			send(conn, buffer, sizeof(buffer), 0);
 			break;
 		}
 		
-		/*
-		µ±ÊäÈëµÄÃüÁîÓë½ÓÊÕÊý¾ÝÏàµÈÊ±£¬ÐèÒªÔÙ´ÎrecvÈ¡³öÃüÁîÖ´ÐÐ½á¹ûºÍ¿ØÖÆÌ¨()×Ö·û´®
-		*/
-		 //printf("ret: %s cmd: %s\n", ret, cmd);
-		 while(strcmp(cmd,"\n") && !strcmp(cmd, ret))
-		 {
-			memset(tmp, 0, sizeof(tmp));
-			len = recv(conn, tmp, sizeof(tmp),0);
-			
-			if(strcmp(console, tmp) == 0)
-			{
-				break;
-			}
-			if(strcmp(ret,"exit\n")==0)
-			{
-				exit(1);
-			}
-			printf("%s", tmp);
-		 }
-		          
+		        
     }
     close(conn);
     close(server_sockfd);

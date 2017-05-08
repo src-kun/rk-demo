@@ -1,8 +1,12 @@
 #!/bin/sh
 
-/*
-清除项目中所有无关文件
-*/
+echo
+echo "************************************"
+echo
+echo "*******清除项目中所有无关文件*******"
+echo
+echo "************************************"
+echo
 pwd=$(pwd)/
 
 rm -f $pwd/.bash_history
@@ -42,4 +46,7 @@ make clean
 
 cd $pwd/control/icmp
 make clean
+
+cd $pwd/client
+rm -f client server
 
