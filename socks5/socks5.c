@@ -18,6 +18,7 @@
 #define TIME_OUT 6000000
 #define USER_NAME "user"
 #define PASS_WORD "password"
+
 // Select auth method, return 0 if success, -1 if failed
 int SelectMethod( int sock )
 {
@@ -38,6 +39,7 @@ int SelectMethod( int sock )
 	method_request = (METHOD_SELECT_REQUEST *)recv_buffer;
 	method_response = (METHOD_SELECT_RESPONSE *)reply_buffer;
 	method_response->version = VERSION;
+	
 	// if not socks5
 	if( (int)method_request->version != VERSION )
 	{
@@ -46,6 +48,7 @@ int SelectMethod( int sock )
 		close( sock );
 		return -1;
 	}
+	
 	method_response->select_method = AUTH_CODE;
 	if( -1 == send( sock, method_response, sizeof(METHOD_SELECT_RESPONSE),0 ) )
 	{
@@ -55,18 +58,18 @@ int SelectMethod( int sock )
 	return 0;
 }
 
-void GetUserPwd(char *user, char *pwd, AUTH_REQUEST2 *auth_request)
+/*获取客户端传送的账户密码*/
+void GetUserPwd(char *user, char *pwd, AUTH_REQUEST *auth_request)
 {
 	char pwd_len[2] = {0};
 	/**
 	内存中接收数据的结构：$3 = {version = 1 '\001', name_len = 6 '\006', user_pwd = "user\aph4nt0m", '\000' <repeats 495 times>}
 	auth_request->name_len is a char, max number is 0xff
 	*/
-	if(auth_request == NULL)
+	if(!strlen((char *)auth_request))
 	{
 		return;
 	}
-	printf("user_pwd: %s name_len: %d \n", auth_request->user_pwd, auth_request->user_len);
 	strncpy(user, auth_request->user_pwd, auth_request->user_len);
 	strncpy(pwd_len, (char *)auth_request + 2 + auth_request->user_len, 1);
 	strcpy(pwd, strstr(auth_request->user_pwd, pwd_len) + 1);
@@ -76,10 +79,9 @@ void GetUserPwd(char *user, char *pwd, AUTH_REQUEST2 *auth_request)
 int AuthPassword( int sock )
 {
 	char recv_buffer[BUFF_SIZE] = { 0 };
-	char reply_buffer[BUFF_SIZE] = { 0 };
-	char recv_name[256] = { 0 };
+
+	char recv_user[256] = { 0 };
 	char recv_pwd[256] = { 0 };
-	AUTH_REQUEST *auth_request;
 	AUTH_RESPONSE *auth_response;
 	// auth username and password
 	int ret = recv( sock, recv_buffer, BUFF_SIZE, 0 );
@@ -90,16 +92,13 @@ int AuthPassword( int sock )
 		return -1;
 	}
 	//printf( "AuthPass: recv %d bytes\n", ret );
-	auth_request = (AUTH_REQUEST *)recv_buffer;
-	memset( reply_buffer, 0, BUFF_SIZE );
-	auth_response = (AUTH_RESPONSE *)reply_buffer;
+	
+	GetUserPwd(recv_user, recv_pwd,(AUTH_REQUEST *) recv_buffer);
+	printf("user: %s pwd: %s \n", recv_user, recv_pwd);
+	
 	auth_response->version = 0x01;
-	
-	GetUserPwd(recv_name, recv_pwd,(AUTH_REQUEST2 *) auth_request);
-	printf("user: %s pwd: %s \n", recv_name, recv_pwd);
-	
 	// check username and password
-	if( (strncmp( recv_name, USER_NAME, strlen(USER_NAME) ) == 0) &&(strncmp( recv_pwd, PASS_WORD, strlen(PASS_WORD) ) == 0))
+	if( (strncmp( recv_user, USER_NAME, strlen(USER_NAME) ) == 0) &&(strncmp( recv_pwd, PASS_WORD, strlen(PASS_WORD) ) == 0))
 	{
 		auth_response->result = 0x00;
 		if( -1 == send( sock, auth_response, sizeof(AUTH_RESPONSE), 0 ) )
@@ -110,29 +109,55 @@ int AuthPassword( int sock )
 			return 0;
 		}
 	}else{
-		printf("user/pwd error !\n");
+		perror("user or password faild !\n");
 		auth_response->result = 0x01;
 		send( sock, auth_response, sizeof(AUTH_RESPONSE), 0 );
 		close( sock );
 		return -1;
 	}
 }
-// parse command, and try to connect real server.
-// return socket for success, -1 for failed.
+
+/* try to connect to real server*/
+int try_conn(struct sockaddr_in *sin, SOCKS5_RESPONSE *socks5_response)
+{
+	
+	int ret = -1;
+	
+	int real_server_sock = socket( AF_INET, SOCK_STREAM, 0 );
+	if( real_server_sock < 0 )
+	{
+		perror( "Socket creation failed\n");
+		return -1;
+	}
+	
+	
+	ret = connect( real_server_sock, (struct sockaddr *)sin, sizeof(struct sockaddr_in) );
+	return ret;
+}
+
+/* 	
+	parse command, and try to connect real server.
+	return socket for success, -1 for failed.
+*/
 int ParseCommand( int sock )
 {
+	int ret = -1;
 	char recv_buffer[BUFF_SIZE] = { 0 };
 	char reply_buffer[BUFF_SIZE] = { 0 };
 	SOCKS5_REQUEST *socks5_request;
 	SOCKS5_RESPONSE *socks5_response;
+	struct sockaddr_in sin;
+	int tryconn_sock = -1;
+	
 	// recv command
-	int ret = recv( sock, recv_buffer, BUFF_SIZE, 0 );
+	ret = recv( sock, recv_buffer, BUFF_SIZE, 0 );
 	if( ret <= 0 )
 	{
 		perror( "recv connect command error" );
 		close( sock );
 		return -1;
 	}
+	
 	socks5_request = (SOCKS5_REQUEST *)recv_buffer;
 	if( (socks5_request->version != VERSION) || (socks5_request->cmd != CONNECT) ||(socks5_request->address_type == IPV6) )
 	{
@@ -140,36 +165,61 @@ int ParseCommand( int sock )
 		close( sock );
 		return -1;
 	}
+	
 	// begain process connect request
-	struct sockaddr_in sin;
 	memset( (void *)&sin, 0, sizeof(struct sockaddr_in) );
 	sin.sin_family = AF_INET;
 	// get real server&#39;s ip address
 	if( socks5_request->address_type == IPV4 )
 	{
-		memcpy( &sin.sin_addr.s_addr, &socks5_request->address_type +
-		sizeof(socks5_request->address_type) , 4 );
-		memcpy( &sin.sin_port, &socks5_request->address_type +
-		sizeof(socks5_request->address_type) + 4, 2 );
-		//printf( "Real Server: %s %d\n", inet_ntoa( sin.sin_addr ),ntohs( sin.sin_port ) );
+		memcpy( &sin.sin_addr.s_addr, &socks5_request->address_type + sizeof(socks5_request->address_type) , 4 );
+		memcpy( &sin.sin_port, &socks5_request->address_type + sizeof(socks5_request->address_type) + 4, 2 );
+		printf( "Real Server: %s %d\n", inet_ntoa( sin.sin_addr ),ntohs( sin.sin_port ) );
+
 	}else if( socks5_request->address_type == DOMAIN ){
+		
+		struct hostent *phost = NULL;
 		char domain_length = *(&socks5_request->address_type + sizeof(socks5_request->address_type));
 		char target_domain[ 256] = { 0 };
+		
 		strncpy( target_domain, &socks5_request->address_type + 2, (unsigned int)domain_length );
-		//printf( "target: %s\n", target_domain );
-		struct hostent *phost = gethostbyname( target_domain );
+		printf( "target: %s\n", target_domain );
+		phost = gethostbyname( target_domain );
 		if( phost == NULL )
 		{
-			//printf( "Resolve %s error!\n" , target_domain );
+			printf( "Resolve %s error!\n" , target_domain );
 			close( sock );
 			return -1;
 		}
 		memcpy( &sin.sin_addr , phost->h_addr_list[0] , phost->h_length );
-		memcpy( &sin.sin_port, &socks5_request->address_type +
-		sizeof(socks5_request->address_type) +
-		sizeof(domain_length) + domain_length, 2 );
+		memcpy( &sin.sin_port, &socks5_request->address_type + sizeof(socks5_request->address_type) + sizeof(domain_length) + domain_length, 2 );
 	}
+	
 	// try to connect to real server
+	/* socks5_response = (SOCKS5_RESPONSE *)reply_buffer;
+	socks5_response->version = VERSION;
+	socks5_response->reserved = 0x00;
+	socks5_response->address_type = 0x01;
+	memset( socks5_response + 4, 0 , 6 );
+	int test = try_conn(&sin, socks5_response);
+	if(test == -1){
+		close( sock );
+	}else if( test == 0 )
+	{
+		socks5_response->reply = 0x00;
+		if( -1 == send( sock, socks5_response, 10, 0 ) )
+		{
+			close( sock );
+			return -1;
+		}
+	}else{
+		perror( "Connect to real server error" );
+		socks5_response->reply = 0x01;
+		send( sock, socks5_response, 10, 0 );
+		close( sock );
+		return -1;
+	} 
+	return test; */
 	int real_server_sock = socket( AF_INET, SOCK_STREAM, 0 );
 	if( real_server_sock < 0 )
 	{
@@ -199,8 +249,9 @@ int ParseCommand( int sock )
 		send( sock, socks5_response, 10, 0 );
 		close( sock );
 		return -1;
-	}
-	return real_server_sock;
+	} 
+	return real_server_sock;  
+	
 }
 int ForwardData( int sock, int real_server_sock )
 {
@@ -288,17 +339,20 @@ int Socks5( void *client_sock )
 		//printf( "socks version error\n" );
 		return -1;
 	}
+	
 	if( AuthPassword( sock ) == -1 )
 	{
 		//printf( "auth password error\n" );
 		return -1;
 	}
+	
 	int real_server_sock = ParseCommand( sock );
 	if( real_server_sock == -1 )
 	{
 		//printf( "parse command error.\n" );
 		return -1;
 	}
+	
 	ForwardData( sock, real_server_sock );
 	close( sock );
 	close( real_server_sock );
@@ -308,7 +362,7 @@ int main( int argc, char *argv[] )
 {
 	if( argc != 2 )
 	{
-		printf( "Socks5 proxy for test,code by YunShu\n" );
+		printf( "Socks5 proxy for test\n" );
 		printf( "Usage: %s <proxy_port>\n", argv[0] );
 		printf( "Options:\n" );
 		printf( " <proxy_port> ---which port of this proxy server will listen.\n" );
