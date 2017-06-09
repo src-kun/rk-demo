@@ -54,11 +54,31 @@ int SelectMethod( int sock )
 	}
 	return 0;
 }
+
+void GetUserPwd(char *user, char *pwd, AUTH_REQUEST2 *auth_request)
+{
+	char pwd_len[2] = {0};
+	/**
+	内存中接收数据的结构：$3 = {version = 1 '\001', name_len = 6 '\006', user_pwd = "yunshu\aph4nt0m", '\000' <repeats 495 times>}
+	auth_request->name_len is a char, max number is 0xff
+	*/
+	if(auth_request == NULL)
+	{
+		return;
+	}
+	printf("user_pwd: %s name_len: %d \n", auth_request->user_pwd, auth_request->user_len);
+	strncpy(user, auth_request->user_pwd, auth_request->user_len);
+	strncpy(pwd_len, (char *)auth_request + 2 + auth_request->user_len, 1);
+	strcpy(pwd, strstr(auth_request->user_pwd, pwd_len) + 1);
+}
+
 // test password, return 0 for success.
 int AuthPassword( int sock )
 {
 	char recv_buffer[BUFF_SIZE] = { 0 };
 	char reply_buffer[BUFF_SIZE] = { 0 };
+	char recv_name[256] = { 0 };
+	char recv_pwd[256] = { 0 };
 	AUTH_REQUEST *auth_request;
 	AUTH_RESPONSE *auth_response;
 	// auth username and password
@@ -74,18 +94,12 @@ int AuthPassword( int sock )
 	memset( reply_buffer, 0, BUFF_SIZE );
 	auth_response = (AUTH_RESPONSE *)reply_buffer;
 	auth_response->version = 0x01;
-	char recv_name[256] = { 0 };
-	char recv_pass[256] = { 0 };
-	// auth_request->name_len is a char, max number is 0xff
-	char pwd_str[2] = { 0 };
-	strncpy( pwd_str, auth_request->name + auth_request->name_len, 1 );
-	int pwd_len = (int)pwd_str[0];
-	strncpy( recv_name, auth_request->name, auth_request->name_len );
-	strncpy( recv_pass, auth_request->name + auth_request->name_len +
-	sizeof(auth_request->pwd_len), pwd_len );
-	//printf( "username: %s\npassword: %s\n", recv_name, recv_pass );
+	
+	GetUserPwd(recv_name, recv_pwd,(AUTH_REQUEST2 *) auth_request);
+	printf("user: %s pwd: %s \n", recv_name, recv_pwd);
+	
 	// check username and password
-	if( (strncmp( recv_name, USER_NAME, strlen(USER_NAME) ) == 0) &&(strncmp( recv_pass, PASS_WORD, strlen(PASS_WORD) ) == 0))
+	if( (strncmp( recv_name, USER_NAME, strlen(USER_NAME) ) == 0) &&(strncmp( recv_pwd, PASS_WORD, strlen(PASS_WORD) ) == 0))
 	{
 		auth_response->result = 0x00;
 		if( -1 == send( sock, auth_response, sizeof(AUTH_RESPONSE), 0 ) )
@@ -96,6 +110,7 @@ int AuthPassword( int sock )
 			return 0;
 		}
 	}else{
+		print("user/pwd error !\n");
 		auth_response->result = 0x01;
 		send( sock, auth_response, sizeof(AUTH_RESPONSE), 0 );
 		close( sock );

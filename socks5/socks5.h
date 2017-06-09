@@ -41,6 +41,14 @@ typedef struct _AUTH_REQUEST //用户密码认证客户端请求
 	char pwd_len;// 第四个字段密码的长度，一个字节，最长为 0xff
 	char pwd[255]; // 密码
 } AUTH_REQUEST;
+
+typedef struct _AUTH_REQUEST2 //用户密码认证客户端请求
+{
+	char version; // 版本，此处恒定为 0x01
+	char user_len; // 第三个字段用户名的长度，一个字节，最长为 0xff
+	char user_pwd[1024]; // 用户名/a密码
+} AUTH_REQUEST2;
+
 typedef struct _SOCKS5_RESPONSE // 连接真实主机，Socks 代理服务器响应
 {
 	char version; // 服务器支持的 Socks 版本，0x04 或者 0x05
