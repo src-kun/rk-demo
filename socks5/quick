@@ -1,0 +1,3 @@
+rm -f socks5
+gcc -o socks5 socks5.c -pthread -g
+./socks5 8080
