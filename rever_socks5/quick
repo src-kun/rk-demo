@@ -1,0 +1,3 @@
+rm -f rsocks5
+gcc -o rsocks5 rsocks5.c -pthread -g
+./rsocks5 8080

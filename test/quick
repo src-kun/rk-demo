@@ -1,0 +1,6 @@
+rm -f client server
+gcc -o client client.c -g
+gcc -o server server.c -lpthread -g
+./server 8080
+
+

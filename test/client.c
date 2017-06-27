@@ -11,13 +11,18 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include "socks5.h"
+
+#include "rsocks5.h"
+
 #define MAX_USER 10
 #define BUFF_SIZE 1024
 #define AUTH_CODE 0x02
 #define TIME_OUT 6000000
 #define USER_NAME "user"
 #define PASS_WORD "password"
+
+void Die(char *mess) { perror(mess); }
+
 
 // Select auth method, return 0 if success, -1 if failed
 int SelectMethod( int sock )
@@ -117,28 +122,6 @@ int AuthPassword( int sock )
 	}
 }
 
-/* try to connect to real server*/
-/*int try_conn(struct sockaddr_in *sin, SOCKS5_RESPONSE *socks5_response)
-{
-	
-	int ret = -1;
-	
-	int real_server_sock = socket( AF_INET, SOCK_STREAM, 0 );
-	if( real_server_sock < 0 )
-	{
-		perror( "Socket creation failed\n");
-		return -1;
-	}
-	
-	
-	ret = connect( real_server_sock, (struct sockaddr *)sin, sizeof(struct sockaddr_in) );
-	return ret;
-} */
-
-/* 	
-	parse command, and try to connect real server.
-	return socket for success, -1 for failed.
-*/
 int ParseCommand( int sock )
 {
 	int ret = -1;
@@ -228,83 +211,50 @@ int ParseCommand( int sock )
 	return real_server_sock;  
 	
 }
-int ForwardData( int sock, int real_server_sock )
-{
-	char recv_buffer[BUFF_SIZE] = { 0 };
-	fd_set fd_read;
-	struct timeval time_out;
-	time_out.tv_sec = 0;
-	time_out.tv_usec = TIME_OUT;
-	int ret = 0;
-	while( 1 )
-		{																							
-		FD_ZERO( &fd_read );
-		FD_SET( sock, &fd_read );
-		FD_SET( real_server_sock, &fd_read );
-		ret = select( (sock > real_server_sock ? sock : real_server_sock) + 1,
-		&fd_read, NULL, NULL, &time_out );
-		if( -1 == ret )
-		{
-			perror( "select socket error" );
-			break;
-		}
-		else if( 0 == ret )
-		{
-			//perror( "select time out" );
-			continue;
-		}
-		printf( "[DEBUG] testing readable!\n" );
-		if( FD_ISSET(sock, &fd_read) )
-		{
-			printf( "client can read!\n" );
-			memset( recv_buffer, 0, BUFF_SIZE );
-			ret = recv( sock, recv_buffer, BUFF_SIZE, 0 );
-			if( ret > 0 )
-			{	
-				printf( "%s", recv_buffer );
-				printf( "recv %d bytes from client.\n", ret );
-				ret = send( real_server_sock, recv_buffer, ret, 0 );
-				if( ret == -1 )
-				{
-					perror( "send data to real server error" );
-					break;
-				}
-				printf( "send %d bytes to client!\n", ret );
-			}
-			else if( ret == 0 )
-			{
-				printf( "client close socket.\n" );
-				break;
-			}
-			else
-			{
-				perror( "recv from client error" );
-				break;
-			}
-		}else if( FD_ISSET(real_server_sock, &fd_read) ){
-			printf( "real server can read!\n" );
-			memset( recv_buffer, 0, BUFF_SIZE );
-			ret = recv( real_server_sock, recv_buffer, BUFF_SIZE, 0 );
-			if( ret > 0 )
-			{
-				printf( "%s", recv_buffer );
-				printf( "recv %d bytes from real server.\n", ret );
-				ret = send( sock, recv_buffer, ret, 0 );
-				if( ret == -1 )
-				{
-					perror( "send data to client error" );
-					break;
-				}
-			}else if( ret == 0 ){
-				printf( "real server close socket.\n" );
-				break;
-			}else{
-				perror( "recv from real server error" );
-				break;
-			}
+int ForwardData(int client_sock, int real_socks) {
+	int sock_tmp = client_sock;
+	int sock = client_sock;
+	char buffer[BUFF_SIZE] = {0};
+	int received = -1;
+	/* Receive message */
+	if(((received = recv(client_sock, buffer, BUFF_SIZE, 0)) > 0))
+	{
+		if (send(real_socks, buffer, received, 0) != received) {
+			Die("Failed to send bytes to real_socks");
+		}else{
+			printf("%s\n", buffer);
+			memset(buffer, 0, BUFF_SIZE);
 		}
 	}
-	return 0;
+	
+	while(((received = recv(real_socks, buffer, BUFF_SIZE, 0)) > 0))
+	{
+		if (send(client_sock, buffer, received, 0) != received) {
+			Die("Failed to send bytes to client_sock");
+		}else{
+			printf("%d\n", received);
+			memset(buffer, 0, BUFF_SIZE);
+		}
+	}
+
+	
+	
+	// while ((received = recv(sock_tmp, buffer, BUFF_SIZE, 0)) > 0) {
+		// /* Send back received data */
+		
+		// if(sock_tmp == real_socks)
+		// {
+			// sock_tmp = sock;
+		// }else if(sock_tmp == sock){
+			// sock_tmp = real_socks;
+		// }
+		// if (send(sock_tmp, buffer, received, 0) != received) {
+			// Die("Failed to send bytes to client");
+		// }else{
+			// memset(buffer, 0, BUFF_SIZE);
+		// }
+		
+	// }
 }
 int Socks5( void *client_sock )
 {
@@ -333,53 +283,69 @@ int Socks5( void *client_sock )
 	close( real_server_sock );
 	return 0;
 }
-int main( int argc, char *argv[] )
+
+int conn_server(char *ip, char *port)
 {
-	if( argc != 2 )
-	{
-		printf( "Socks5 proxy for test\n" );
-		printf( "Usage: %s <proxy_port>\n", argv[0] );
-		printf( "Options:\n" );
-		printf( " <proxy_port> ---which port of this proxy server will listen.\n" );
-		return 1;
+	int sock;
+	struct sockaddr_in echoserver;
+
+
+	/* Create the TCP socket */
+	if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+		Die("Failed to create socket");
 	}
-	struct sockaddr_in sin;
-	memset( (void *)&sin, 0, sizeof( struct sockaddr_in) );
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons( atoi(argv[1]) );
-	sin.sin_addr.s_addr = htonl(INADDR_ANY);
-	int listen_sock = socket( AF_INET, SOCK_STREAM, 0 );
-	if( listen_sock < 0 )
-	{
-		perror( "Socket creation failed\n");
+
+	/* Construct the server sockaddr_in structure */
+	memset(&echoserver, 0, sizeof(echoserver));       /* Clear struct */
+	echoserver.sin_family = AF_INET;                  /* Internet/IP */
+	echoserver.sin_addr.s_addr = inet_addr(ip);  /* IP address */
+	echoserver.sin_port = htons(atoi(port));       /* server port */
+	/* Establish connection */
+	if (connect(sock,(struct sockaddr *) &echoserver, sizeof(echoserver)) < 0) {
+		Die("Failed to connect with server");
+	}
+	return sock;
+}
+
+int main(int argc, char *argv[]) {
+
+	int sock;
+	int received = 0;
+	unsigned int echolen;
+	char buffer[BUFF_SIZE];
+	if (argc != 4) {
+		fprintf(stderr, "USAGE: TCPecho <server_ip> <word> <port>\n");
+		exit(1);
+	}
+	sock = conn_server(argv[1], argv[3]);
+	// /* Send the word to the server */
+	echolen = strlen(argv[2]);
+	if (send(sock, argv[2], echolen, 0) != echolen) {
+		Die("Mismatch in number of sent bytes");
 		return -1;
 	}
-	int opt = SO_REUSEADDR;
-	setsockopt( listen_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-	if( bind( listen_sock, (struct sockaddr*)&sin, sizeof(struct sockaddr_in) ) < 0 )
-	{
-		perror( "Bind error" );
-		return -1;
+	/* Receive the word back from the server */
+	fprintf(stdout, "Received: ");
+	if (received < echolen) {
+		int bytes = 0;
+		if ((bytes = recv(sock, buffer, BUFF_SIZE-1, 0)) < 1) {
+			Die("Failed to receive bytes from server");
+			return -1;
+		}
+		received += bytes;
+		buffer[bytes] = '\0';        /* Assure null terminated string */
+		fprintf(stdout, buffer);
 	}
-	if( listen( listen_sock, MAX_USER ) < 0 )
-	{
-		perror( "Listen error" );
-		return -1;
-	}
-	struct sockaddr_in cin;
-	int client_sock;
-	int client_len = sizeof( struct sockaddr_in );
-	while( client_sock = accept( listen_sock, (struct sockaddr *)&cin,(socklen_t *)&client_len ) )
-	{
-		printf( "Connected from %s, processing......\n",
-		inet_ntoa( cin.sin_addr ) );
-		pthread_t work_thread;
-		if( pthread_create( &work_thread, NULL, (void *)Socks5, (void *)&client_sock ) )
+	fprintf(stdout, "\n");
+
+	while(1){
+		if(Socks5(&sock) == -1)
 		{
-			perror( "Create thread error..." );
-			close( client_sock );
-		}else{
-			pthread_detach( work_thread );
+			break;
 		}
 	}
+	
+	
+	// close(sock);
+	// exit(0);
 }

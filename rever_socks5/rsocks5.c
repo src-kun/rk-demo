@@ -11,7 +11,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include "socks5.h"
+#include "rsocks5.h"
 #define MAX_USER 10
 #define BUFF_SIZE 1024
 #define AUTH_CODE 0x02
