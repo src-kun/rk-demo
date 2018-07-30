@@ -9,13 +9,13 @@
 		-D_CONFIG_X86_ 
 		-D_CONFIG_X86_64_
 ### Make:
-	`测试完整rootkit
+	测试完整rootkit
 		cp Makefile.rk Makefile
 		make
 	测试所有rootkit demo:
-		./Makefile.all`
+		./Makefile.all
 ### clean:
-	`./clean`
+	./clean
 
 
 
